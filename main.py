@@ -44,7 +44,7 @@ def get_reportitem(path):
         project_list = []
         for row in reader:
             project = row["Project"]
-            if project not in project_list :
+            if project not in project_list:
                 project_list.append(project)
             description = row["Description"]
             ticketid = get_ticketid(description)
@@ -53,7 +53,16 @@ def get_reportitem(path):
             duration = get_hour(row["Duration"])
 
             # 一つのエントリ
-            json_result.append({"ticketid": ticketid, "comment": comment, "duration":  duration, "project": project})
+            migrated = False
+            for x in json_result:
+                if x['raw_info'] == description:
+                    x['duration'] += duration
+                    migrated = True
+            if not migrated:
+                json_result.append(
+                    {'raw_info': description, 'ticketid': ticketid, 'comment': comment, 'duration': duration,
+                     'project': project})
+
 
     summarized = summarize(json_result, project_list)
 
@@ -79,6 +88,13 @@ def summarize(reportitem, project_list):
 
 
 def create_report(path):
+    report_src = None
+    with open(path, 'r') as f:
+        report_src = json.load(f)
+    for project in report_src:
+        print('# %s ( %s h) \n' % (project['project'], project['duration']))
+        for issue in project['data']:
+            print("## %s %s\n" % (issue['ticketid'], issue['comment']))
     print("No implementation.")
     return
 

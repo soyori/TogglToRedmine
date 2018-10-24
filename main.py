@@ -30,11 +30,10 @@ def get_ticketid(description):
 
 def get_reportitem(path):
 
-    reportitem = []
     json_fname = '%s.json' % str(datetime.date.today())
     if os.path.exists(json_fname):
         with open(json_fname) as f:
-            reportitem = json.load(f)
+            json_fname = json.load(f)
 
     with open(path, 'r') as csvfile:
         fieldnames = ("User", "Email", "Client", "Project", "Task", "Description", "Billable", "Start date", "Start time", "End date", "End time", "Duration", "Tags", "Amount ()")
@@ -42,31 +41,41 @@ def get_reportitem(path):
         next(reader, None)
 
         json_result = []
-        project = ''
-        total_duration = 0.0
+        project_list = []
         for row in reader:
-            # json_result.append(row)
             project = row["Project"]
-            print("Project: %s" % project)
+            if project not in project_list :
+                project_list.append(project)
             description = row["Description"]
-            print("Description: %s" % description)
             ticketid = get_ticketid(description)
-            print("Ticket id: %s" % ticketid)
             to_remove = '#%s_' % ticketid
             comment = (str(description)).replace(to_remove, '')
-            print("Comment: %s" % comment)
             duration = get_hour(row["Duration"])
-            print("Duration (h): %s" % duration)
-            json_result.append({"ticketid": ticketid, "comment": comment, "duration":  duration})
-            total_duration += duration
 
-        reportitem.append({"project": project, "total_duration": round(total_duration, 2), "data": json_result})
+            # 一つのエントリ
+            json_result.append({"ticketid": ticketid, "comment": comment, "duration":  duration, "project": project})
+
+    summarized = summarize(json_result, project_list)
 
     with open(json_fname, 'w') as f:
-        json.dump(reportitem, f)
+        json.dump(summarized, f)
         f.write('\n')
-
     return json_fname
+
+
+def summarize(reportitem, project_list):
+
+    result = []
+    for project in project_list:
+        project_duration = 0.0
+        tmp_items = []
+        for item in reportitem:
+            if item["project"] == project:
+                tmp_items.append(item)
+                project_duration += item['duration']
+        result.append({'project': project, 'duration': round(project_duration, 2), 'data': tmp_items})
+
+    return result
 
 
 def create_report(path):
